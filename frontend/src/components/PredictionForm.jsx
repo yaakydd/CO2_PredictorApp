@@ -3,6 +3,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import Spinner from "./Spinner";
 import AnimatedCard from "./AnimatedCard";
+import toast from "react-hot-toast";
 
 const PredictionForm = () => {
   const [formData, setFormData] = useState({
@@ -25,16 +26,21 @@ const PredictionForm = () => {
     try {
       const res = await axios.post("http://127.0.0.1:8000/predict", formData);
       setPrediction(res.data.prediction.toFixed(2));
+      toast.success("Prediction successful!");
     } catch (error) {
       console.error("Prediction error:", error);
-      alert("Error connecting to backend. Make sure it's running!");
+      toast.error("Error connecting to backend. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5 bg-white rounded-xl p-4 sm:p-6 md:p-8"
+    >
+      {/* Fuel Type */}
       <div>
         <label className="block text-gray-700 mb-2 font-medium">
           Fuel Type
@@ -54,6 +60,7 @@ const PredictionForm = () => {
         </select>
       </div>
 
+      {/* Cylinders */}
       <div>
         <label className="block text-gray-700 mb-2 font-medium">
           Number of Cylinders
@@ -69,6 +76,7 @@ const PredictionForm = () => {
         />
       </div>
 
+      {/* Engine Size */}
       <div>
         <label className="block text-gray-700 mb-2 font-medium">
           Engine Size (L)
@@ -86,10 +94,10 @@ const PredictionForm = () => {
       </div>
 
       <motion.button
-        whileTap={{ scale: 0.95 }}
+        whileTap={{ scale: 0.97 }}
         type="submit"
         disabled={loading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-all"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-all shadow-md"
       >
         {loading ? "Predicting..." : "Predict CO₂ Emission"}
       </motion.button>
