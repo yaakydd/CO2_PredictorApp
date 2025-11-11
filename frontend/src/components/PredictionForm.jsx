@@ -1,117 +1,78 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { motion } from "framer-motion";
 import Spinner from "./Spinner";
-import AnimatedCard from "./AnimatedCard";
+import AnimatedCard from "./AnimationCard";
 import toast from "react-hot-toast";
 
-const PredictionForm = () => {
-  const [formData, setFormData] = useState({
-    fuel_type: "",
-    cylinders: "",
-    engine_size: "",
-  });
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+export default function PredictionForm() {
+  const [form, setForm] = useState({ fuel_type: "", cylinders: "", engine_size: "" });
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  function handleChange(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setPrediction(null);
-
+    toast.dismiss();
     try {
-      const res = await axios.post("http://127.0.0.1:8000/predict", formData);
-      setPrediction(res.data.prediction.toFixed(2));
-      toast.success("Prediction successful!");
-    } catch (error) {
-      console.error("Prediction error:", error);
-      toast.error("Error connecting to backend. Please try again.");
+      const payload = {
+        fuel_type: form.fuel_type,
+        cylinders: parseInt(form.cylinders, 10),
+        engine_size: parseFloat(form.engine_size)
+      };
+
+      const res = await axios.post(`${API_URL}/predict/`, payload, { timeout: 10000 });
+      // backend returns { predicted_CO2: number } per router below
+      const val = res.data.predicted_CO2 ?? res.data.predicted_co2 ?? res.data.co2_emissions ?? res.data.predicted_CO2_Emission;
+      if (val === undefined) throw new Error("Unexpected response shape");
+      setPrediction(Number(val).toFixed(2));
+      toast.success("Prediction successful");
+    } catch (err) {
+      console.error(err);
+      toast.error("Prediction failed — check backend or inputs");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-5 bg-white rounded-xl p-4 sm:p-6 md:p-8"
-    >
-      {/* Fuel Type */}
-      <div>
-        <label className="block text-gray-700 mb-2 font-medium">
-          Fuel Type
-        </label>
-        <select
-          name="fuel_type"
-          value={formData.fuel_type}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          required
-        >
-          <option value="">Select Fuel Type</option>
-          <option value="Petrol">Petrol</option>
-          <option value="Diesel">Diesel</option>
-          <option value="Ethanol">Ethanol</option>
-          <option value="Hybrid">Hybrid</option>
-        </select>
-      </div>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <label className="text-sm font-medium">Fuel Type</label>
+      <select name="fuel_type" value={form.fuel_type} onChange={handleChange} required
+        className="p-2 border rounded">
+        <option value="">Choose fuel type</option>
+        <option>Petrol</option>
+        <option>Diesel</option>
+        <option>Ethanol</option>
+        <option>Hybrid</option>
+      </select>
 
-      {/* Cylinders */}
-      <div>
-        <label className="block text-gray-700 mb-2 font-medium">
-          Number of Cylinders
-        </label>
-        <input
-          type="number"
-          name="cylinders"
-          value={formData.cylinders}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          placeholder="e.g., 4"
-          required
-        />
-      </div>
+      <label className="text-sm font-medium">Cylinders</label>
+      <input name="cylinders" value={form.cylinders} onChange={handleChange} required
+        type="number" className="p-2 border rounded" placeholder="4" />
 
-      {/* Engine Size */}
-      <div>
-        <label className="block text-gray-700 mb-2 font-medium">
-          Engine Size (L)
-        </label>
-        <input
-          type="number"
-          step="0.1"
-          name="engine_size"
-          value={formData.engine_size}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          placeholder="e.g., 2.0"
-          required
-        />
-      </div>
+      <label className="text-sm font-medium">Engine Size (L)</label>
+      <input name="engine_size" value={form.engine_size} onChange={handleChange} required
+        type="number" step="0.1" className="p-2 border rounded" placeholder="2.0" />
 
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        type="submit"
-        disabled={loading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-all shadow-md"
-      >
+      <button disabled={loading} type="submit"
+        className="mt-2 bg-indigo-600 text-white py-2 rounded font-semibold hover:bg-indigo-700">
         {loading ? "Predicting..." : "Predict CO₂ Emission"}
-      </motion.button>
+      </button>
 
       {loading && <Spinner />}
 
       {prediction && (
         <AnimatedCard>
-          Estimated CO₂ Emission:{" "}
-          <span className="font-bold text-green-700">{prediction} g/km</span>
+          Estimated CO₂ Emission: <span className="text-green-700">{prediction} g/km</span>
         </AnimatedCard>
       )}
     </form>
   );
-};
-
-export default PredictionForm;
+}
