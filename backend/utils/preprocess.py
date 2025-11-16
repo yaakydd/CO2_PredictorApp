@@ -12,10 +12,13 @@ def preprocess_input(df, encoder, scaler):
     )
 
     # Combine numerical + encoded categorical
-    num_df = df[["engine_size", "cylinders"]]
-    combined = pd.concat([num_df, cat_encoded_df], axis=1)
+    numerical_df = df[["engine_size(l)", "cylinders"]]
+    combined = pd.concat([numerical_df, cat_encoded_df], axis=1)
 
     # Scale numeric + encoded features
     scaled_input = scaler.transform(combined)
 
     return scaled_input
+
+
+

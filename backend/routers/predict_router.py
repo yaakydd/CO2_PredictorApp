@@ -95,7 +95,7 @@ def preprocess_input(fuel_type: str, engine_size: float, cylinders: int):
     
     # STEP 2: Create DataFrame with log-transformed numerical + categorical
     df = pd.DataFrame([{
-        "engine_size": log_engine_size,
+        "engine_size(l)": log_engine_size,
         "cylinders": log_cylinders,
         "fuel_type": fuel_type
     }])
@@ -108,7 +108,7 @@ def preprocess_input(fuel_type: str, engine_size: float, cylinders: int):
     )
     
     # STEP 4: Combine numerical (already log-transformed) + encoded categorical
-    num_df = df[["engine_size", "cylinders"]]
+    num_df = df[["engine_size(l)", "cylinders"]]
     combined = pd.concat([num_df, cat_encoded_df], axis=1)
     
     # STEP 5: Scale everything (EXACT same as training)

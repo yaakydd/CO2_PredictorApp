@@ -1,8 +1,194 @@
 import React from "react";
 import { motion } from "framer-motion";
+import jsPDF from "jspdf";
 
 export default function AnimationCard({ prediction, onReset }) {
   const { predicted_co2_emissions, interpretation, category, color } = prediction;
+
+  const generateAndSharePDF = () => {
+    const doc = new jsPDF();
+    
+    // Set colors based on category
+    const getCategoryColor = () => {
+      switch(category) {
+        case "Excellent": return [16, 185, 129]; // green
+        case "Good": return [34, 197, 94]; // light green
+        case "Average": return [245, 158, 11]; // orange
+        case "High": return [239, 68, 68]; // red
+        case "Very High": return [220, 38, 38]; // dark red
+        default: return [0, 0, 0];
+      }
+    };
+
+    // Header with background
+    doc.setFillColor(71, 85, 105); // slate-700
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text("CO₂ Emissions Report", 105, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text("Vehicle Carbon Footprint Analysis", 105, 30, { align: 'center' });
+
+    // Date
+    const date = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${date}`, 105, 50, { align: 'center' });
+
+    // Main Result Box
+    const [r, g, b] = getCategoryColor();
+    doc.setFillColor(r, g, b, 0.1);
+    doc.setDrawColor(r, g, b);
+    doc.setLineWidth(2);
+    doc.roundedRect(20, 60, 170, 50, 5, 5, 'FD');
+    
+    // CO2 Value
+    doc.setTextColor(r, g, b);
+    doc.setFontSize(48);
+    doc.setFont(undefined, 'bold');
+    doc.text(`${predicted_co2_emissions}`, 105, 90, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text("g/km", 105, 100, { align: 'center' });
+
+    // Category Badge
+    doc.setFillColor(r, g, b);
+    doc.roundedRect(70, 115, 70, 12, 3, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(category, 105, 123, { align: 'center' });
+
+    // Interpretation Section
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text("Environmental Impact Assessment:", 20, 145);
+    
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(60, 60, 60);
+    
+    // Split interpretation into multiple lines
+    const splitText = doc.splitTextToSize(interpretation, 170);
+    doc.text(splitText, 20, 155);
+
+    // Recommendations Section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text("Recommendations:", 20, 190);
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(60, 60, 60);
+    
+    const recommendations = getRecommendations(category);
+    let yPosition = 200;
+    recommendations.forEach((rec, index) => {
+      const recText = doc.splitTextToSize(`${index + 1}. ${rec}`, 165);
+      doc.text(recText, 25, yPosition);
+      yPosition += recText.length * 6;
+    });
+
+    // Comparison Chart
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text("Emission Comparison:", 20, yPosition + 5);
+    
+    yPosition += 15;
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    
+    const comparisons = [
+      { label: "Excellent (<120 g/km)", bar: category === "Excellent", color: [16, 185, 129] },
+      { label: "Good (120-160 g/km)", bar: category === "Good", color: [34, 197, 94] },
+      { label: "Average (160-200 g/km)", bar: category === "Average", color: [245, 158, 11] },
+      { label: "High (200-250 g/km)", bar: category === "High", color: [239, 68, 68] },
+      { label: "Very High (>250 g/km)", bar: category === "Very High", color: [220, 38, 38] }
+    ];
+
+    comparisons.forEach((comp) => {
+      doc.setTextColor(60, 60, 60);
+      doc.text(comp.label, 25, yPosition);
+      
+      if (comp.bar) {
+        doc.setFillColor(...comp.color);
+        doc.rect(100, yPosition - 3, 60, 4, 'F');
+        doc.setFontSize(8);
+        doc.setTextColor(...comp.color);
+        doc.text("← YOUR VEHICLE", 165, yPosition);
+        doc.setFontSize(9);
+      } else {
+        doc.setFillColor(220, 220, 220);
+        doc.rect(100, yPosition - 3, 30, 4, 'F');
+      }
+      yPosition += 8;
+    });
+
+    // Footer
+    doc.setFillColor(71, 85, 105);
+    doc.rect(0, 280, 210, 17, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.text("CO₂ Emissions Predictor | Helping You Track Your Carbon Footprint", 105, 290, { align: 'center' });
+
+    // Save PDF
+    const fileName = `CO2_Report_${predicted_co2_emissions}gkm_${date.replace(/\s/g, '_')}.pdf`;
+    doc.save(fileName);
+    
+    // Show success message
+    alert(`✅ PDF Report Generated!\n\nFilename: ${fileName}\n\nYou can now share this report online or via email.`);
+  };
+
+  const getRecommendations = (category) => {
+    switch(category) {
+      case "Excellent":
+        return [
+          "Maintain regular vehicle servicing to keep emissions low",
+          "Continue using eco-friendly driving habits",
+          "Consider sharing your fuel-efficient choices with others"
+        ];
+      case "Good":
+        return [
+          "Maintain steady speeds and avoid rapid acceleration",
+          "Keep tires properly inflated to improve efficiency",
+          "Remove unnecessary weight from your vehicle"
+        ];
+      case "Average":
+        return [
+          "Consider carpooling or public transport when possible",
+          "Plan routes to minimize unnecessary driving",
+          "Look into hybrid or electric vehicles for your next purchase"
+        ];
+      case "High":
+        return [
+          "Evaluate if a more fuel-efficient vehicle suits your needs",
+          "Combine multiple errands into single trips",
+          "Consider offsetting emissions through carbon credits"
+        ];
+      case "Very High":
+        return [
+          "Strongly consider switching to a more efficient vehicle",
+          "Explore electric or hybrid alternatives",
+          "Use alternative transportation methods whenever possible"
+        ];
+      default:
+        return ["Regular maintenance and efficient driving can help reduce emissions"];
+    }
+  };
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
@@ -103,14 +289,11 @@ export default function AnimationCard({ prediction, onReset }) {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              const text = `My vehicle's CO2 emissions: ${predicted_co2_emissions} g/km (${category})`;
-              navigator.clipboard.writeText(text);
-              alert("Copied to clipboard!");
-            }}
-            className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg font-semibold border border-white/30 transition-all"
+            onClick={generateAndSharePDF}
+            className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg font-semibold border border-white/30 transition-all flex items-center justify-center gap-2"
           >
-            📋 Share Result
+            <span>📄</span>
+            <span>Share Result (PDF)</span>
           </motion.button>
         </div>
       </motion.div>
